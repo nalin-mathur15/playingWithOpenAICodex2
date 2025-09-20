@@ -69,17 +69,13 @@ async function clearState(tabId) {
   }
   try {
     await chrome.action.setBadgeText({ tabId, text: '' });
-  } catch (error) {
-    // Ignore badge failures.
-  }
+  } catch (error) {}
 }
 
 async function broadcast(message) {
   try {
     await chrome.runtime.sendMessage(message);
-  } catch (error) {
-    // runtime errors are expected when there are no listeners; ignore.
-  }
+  } catch (error) {}
 }
 
 async function ensureBadge(tabId, detection) {
