@@ -14,6 +14,9 @@
     "activeTab",
     "storage",
     "scripting",
+    "aiLanguageModel",
+    "aiSummarizer",
+    "aiRewriter",
     "notifications"
   ],
   "host_permissions": [

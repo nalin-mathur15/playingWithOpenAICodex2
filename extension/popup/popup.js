@@ -85,11 +85,15 @@ function renderHeatmap(heatmap) {
   for (const entry of heatmap) {
     const row = document.createElement('div');
     row.className = 'heatmap__row';
+    const severity = riskLabel(Number(entry.riskLevel) || 0);
+    row.dataset.risk = String(Math.max(0, Math.min(5, Number(entry.riskLevel) || 0)));
+    row.dataset.severity = severity;
     const label = document.createElement('div');
     label.className = 'heatmap__label';
     label.textContent = entry.category;
     const bars = document.createElement('div');
     bars.className = 'heatmap__bars';
+    bars.dataset.severity = severity;
     for (let i = 1; i <= 5; i += 1) {
       const span = document.createElement('span');
       if (i <= entry.riskLevel) {
@@ -134,6 +138,7 @@ function renderClauses(clauses) {
 
     const scoreValueNumber = Math.max(1, Math.min(5, Math.round(Number(clause.riskScore) || 1)));
     const label = riskLabel(scoreValueNumber);
+    li.dataset.severity = label;
     score.dataset.score = label;
     scoreValue.textContent = scoreValueNumber.toString();
     scoreLabel.textContent = `${label} risk`;

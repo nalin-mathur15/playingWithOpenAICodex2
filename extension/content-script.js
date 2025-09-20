@@ -34,6 +34,43 @@
     return (str || '').toLowerCase();
   }
 
+  function isLikelySearchResultsPage() {
+    const host = normalize(window.location.hostname);
+    const path = normalize(window.location.pathname);
+    const query = normalize(window.location.search);
+
+    const providers = [
+      { host: 'google.', queryParams: ['q'], paths: ['/search', '/webhp'] },
+      { host: 'bing.com', queryParams: ['q'], paths: ['/search'] },
+      { host: 'duckduckgo.com', queryParams: ['q'], paths: ['/'] },
+      { host: 'search.yahoo.', queryParams: ['p'], paths: ['/search'] },
+      { host: 'yahoo.com', queryParams: ['p'], paths: ['/search'] },
+      { host: 'yandex.', queryParams: ['text'], paths: ['/search'] },
+      { host: 'baidu.com', queryParams: ['wd'], paths: ['/s'] },
+      { host: 'startpage.com', queryParams: ['query'], paths: ['/do/search'] },
+      { host: 'ecosia.org', queryParams: ['q'], paths: ['/search'] }
+    ];
+
+    for (const provider of providers) {
+      if (!host.includes(provider.host)) continue;
+      const pathMatch = provider.paths.some((candidate) => path.startsWith(candidate));
+      const queryMatch = provider.queryParams.some((param) => query.includes(`${param}=`));
+      if (!(pathMatch || queryMatch)) continue;
+
+      const searchForm = document.querySelector(
+        'form[action*="/search" i], form[action*="search" i][role="search"]'
+      );
+      const resultsContainer = document.querySelector('#search, #b_results, .serp__results');
+      if (searchForm || resultsContainer) {
+        return true;
+      }
+      if (document.body && (document.body.id === 'gsr' || document.body.classList.contains('srp')))
+        return true;
+    }
+
+    return false;
+  }
+
   function gatherStructuredText() {
     const selectors = 'h1, h2, h3, h4, h5, p, li, dt, dd, blockquote';
     const nodes = Array.from(document.querySelectorAll(selectors));
@@ -62,6 +99,15 @@
   }
 
   function computeDetection() {
+    const protocol = normalize(window.location.protocol);
+    if (!protocol.startsWith('http')) {
+      return null;
+    }
+
+    if (isLikelySearchResultsPage()) {
+      return null;
+    }
+
     const url = normalize(window.location.href);
     const title = normalize(document.title);
     const heading = normalize(
@@ -118,6 +164,19 @@
     }
 
     const keywordMatches = matches[bestType];
+    const hasUrlMatch = keywordMatches.some((entry) => entry.startsWith('URL'));
+    const hasHeadingMatch = keywordMatches.some((entry) => entry.startsWith('Heading'));
+    const hasTitleMatch = keywordMatches.some((entry) => entry.startsWith('Title'));
+    const bodyMatchCount =
+      bestType === 'terms' ? bodyMatchesTerms.length : bodyMatchesPrivacy.length;
+
+    if (!hasUrlMatch && !hasHeadingMatch) {
+      const strongTitleSignal = hasTitleMatch && bodyMatchCount >= 2 && bestScore >= threshold + 1;
+      if (!strongTitleSignal) {
+        return null;
+      }
+    }
+
     const pageType = bestType === 'terms' ? 'terms-of-service' : 'privacy-policy';
     const { text } = structured;
 

@@ -69,16 +69,13 @@ async function clearState(tabId) {
   }
   try {
     await chrome.action.setBadgeText({ tabId, text: '' });
-  } catch (error) {
-  }
+  } catch (error) {}
 }
 
 async function broadcast(message) {
   try {
     await chrome.runtime.sendMessage(message);
-  } catch (error) {
-  
-  }
+  } catch (error) {}
 }
 
 async function ensureBadge(tabId, detection) {
@@ -95,6 +92,39 @@ function truncateForModel(text, maxLength = 24000) {
   if (!text) return '';
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength);
+}
+
+function summarizerResultToString(result) {
+  if (!result) return null;
+  if (typeof result === 'string') return result;
+  if (typeof result.summary === 'string') return result.summary;
+  if (Array.isArray(result.points)) {
+    return result.points.join('\n');
+  }
+  if (typeof result.text === 'string') return result.text;
+  return null;
+}
+
+function wordCount(text) {
+  if (!text) return 0;
+  return text
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+}
+
+function trimToWordLimit(text, limit = 300) {
+  if (!text) return '';
+  if (!limit || limit <= 0) return '';
+  const words = text
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length <= limit) {
+    return words.join(' ');
+  }
+  const trimmed = words.slice(0, limit).join(' ');
+  return `${trimmed}…`;
 }
 
 async function tryCreatePromptSession(systemPrompt) {
@@ -126,20 +156,48 @@ function extractJson(text) {
   }
 }
 
-async function runSummarizer(text) {
+async function runSummarizer(text, maxWords = 300) {
   if (!aiRoot || !aiRoot.summarizer || typeof aiRoot.summarizer.create !== 'function') {
     return null;
   }
   try {
-    const summarizer = await aiRoot.summarizer.create({ type: 'key-points' });
-    const result = await summarizer.summarize(text);
-    if (!result) return null;
-    if (typeof result === 'string') return result;
-    if (result.summary) return result.summary;
-    if (Array.isArray(result.points)) {
-      return result.points.join('\n');
+    let summarizer = null;
+    try {
+      summarizer = await aiRoot.summarizer.create({ type: 'paragraph' });
+    } catch (primaryError) {
+      console.debug('Policy Guardian: paragraph summarizer unavailable', primaryError);
     }
-    return null;
+    if (!summarizer) {
+      try {
+        summarizer = await aiRoot.summarizer.create({ type: 'key-points' });
+      } catch (fallbackError) {
+        console.warn('Policy Guardian: unable to create summarizer', fallbackError);
+        return null;
+      }
+    }
+    const result = await summarizer.summarize(text);
+    let summary = summarizerResultToString(result);
+    if (!summary) return null;
+    summary = summary.trim();
+
+    if (wordCount(summary) > maxWords) {
+      try {
+        const shortSummarizer = await aiRoot.summarizer.create({ type: 'key-points' });
+        const shorterResult = await shortSummarizer.summarize(summary);
+        const shorter = summarizerResultToString(shorterResult);
+        if (shorter) {
+          summary = shorter.trim();
+        }
+      } catch (error) {
+        console.debug('Policy Guardian: secondary summarizer attempt failed', error);
+      }
+    }
+
+    if (wordCount(summary) > maxWords) {
+      summary = trimToWordLimit(summary, maxWords);
+    }
+
+    return summary;
   } catch (error) {
     console.warn('Policy Guardian: summarizer failed', error);
     return null;
@@ -238,7 +296,8 @@ function fallbackSummary(text) {
     .split(/(?<=[.!?])\s+/)
     .filter(Boolean)
     .slice(0, 3);
-  return sentences.join(' ');
+  const combined = sentences.join(' ');
+  return trimToWordLimit(combined, 300);
 }
 
 async function fallbackAnalysis(pageText) {
@@ -250,6 +309,45 @@ async function fallbackAnalysis(pageText) {
     suspiciousClauses,
     riskHeatmap
   };
+}
+
+async function ensureSummaryWithinLimit(summary, sourceText, maxWords = 300) {
+  const source = typeof sourceText === 'string' ? sourceText : '';
+  let current = typeof summary === 'string' ? summary.trim() : '';
+
+  if (!current) {
+    const generated = await runSummarizer(source, maxWords);
+    if (generated) {
+      return generated.trim();
+    }
+    return trimToWordLimit(fallbackSummary(source), maxWords);
+  }
+
+  if (wordCount(current) <= maxWords) {
+    return current;
+  }
+
+  const condensed = await runSummarizer(current, maxWords);
+  if (condensed) {
+    const trimmedCondensed = condensed.trim();
+    if (wordCount(trimmedCondensed) <= maxWords) {
+      return trimmedCondensed;
+    }
+    current = trimmedCondensed;
+  }
+
+  if (source) {
+    const sourceCondensed = await runSummarizer(source, maxWords);
+    if (sourceCondensed) {
+      const trimmedSourceCondensed = sourceCondensed.trim();
+      if (wordCount(trimmedSourceCondensed) <= maxWords) {
+        return trimmedSourceCondensed;
+      }
+      current = trimmedSourceCondensed;
+    }
+  }
+
+  return trimToWordLimit(current, maxWords);
 }
 
 async function analyzeWithPromptAPI(pageText, pageType) {
@@ -333,13 +431,15 @@ async function runPolicyAnalysis({ pageText, pageType }) {
   }
 
   if (!analysis.summary) {
-    const summary = await runSummarizer(truncated);
+    const summary = await runSummarizer(truncated, 300);
     if (summary) {
       analysis.summary = summary;
     } else if (!analysis.summary) {
       analysis.summary = fallbackSummary(truncated);
     }
   }
+
+  analysis.summary = await ensureSummaryWithinLimit(analysis.summary, truncated, 300);
 
   if (!analysis.riskHeatmap || analysis.riskHeatmap.length === 0) {
     analysis.riskHeatmap = computeFallbackHeatmap(truncated);
