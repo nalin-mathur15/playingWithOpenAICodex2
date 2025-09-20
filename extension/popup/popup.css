@@ -1,0 +1,250 @@
+:root {
+  color-scheme: light dark;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-width: 360px;
+  background: #f5f0ff;
+  color: #1b1031;
+}
+
+body.dark {
+  background: #1b1031;
+  color: #f5f0ff;
+}
+
+#app {
+  padding: 16px;
+}
+
+.header {
+  margin-bottom: 16px;
+}
+
+.header__title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.header__subtitle {
+  font-size: 13px;
+  opacity: 0.7;
+  margin-top: 4px;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.88);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 12px 32px rgba(34, 20, 78, 0.12);
+  backdrop-filter: blur(12px);
+}
+
+body.dark .card {
+  background: rgba(44, 27, 91, 0.8);
+  box-shadow: 0 12px 32px rgba(4, 0, 37, 0.6);
+}
+
+.card--error {
+  border: 1px solid #ffb4ab;
+  background: rgba(255, 240, 240, 0.92);
+}
+
+.status__details {
+  margin-bottom: 12px;
+}
+
+.status__label {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.status__meta {
+  font-size: 12px;
+  opacity: 0.75;
+  margin-top: 4px;
+}
+
+.status__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.button {
+  border-radius: 10px;
+  border: none;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+}
+
+.button--primary {
+  background: linear-gradient(135deg, #d0bcff, #b69df8);
+  color: #1b1031;
+  box-shadow: 0 6px 16px rgba(103, 80, 164, 0.4);
+}
+
+.button--primary:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.button--ghost {
+  background: transparent;
+  border: 1px solid rgba(103, 80, 164, 0.4);
+  color: inherit;
+}
+
+.summary {
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.heatmap {
+  margin-top: 20px;
+}
+
+.heatmap__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+
+.heatmap__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.heatmap__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.heatmap__label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.heatmap__bars {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  width: 160px;
+}
+
+.heatmap__bars span {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(103, 80, 164, 0.16);
+}
+
+.heatmap__bars span.active {
+  background: linear-gradient(135deg, #ffb4ab, #d0bcff);
+}
+
+.clauses {
+  margin-top: 24px;
+}
+
+.clauses__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+
+.clauses__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.clause {
+  display: flex;
+  gap: 12px;
+  border: 1px solid rgba(103, 80, 164, 0.2);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.clause__score {
+  min-width: 56px;
+  text-align: center;
+  border-radius: 10px;
+  padding: 8px 6px;
+  background: rgba(103, 80, 164, 0.12);
+}
+
+.clause__score[data-score="high"] {
+  background: rgba(255, 138, 128, 0.2);
+}
+
+.clause__score[data-score="medium"] {
+  background: rgba(255, 213, 79, 0.2);
+}
+
+.clause__score[data-score="low"] {
+  background: rgba(76, 175, 80, 0.2);
+}
+
+.clause__score-value {
+  font-size: 20px;
+  font-weight: 700;
+  display: block;
+}
+
+.clause__score-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.clause__body {
+  flex: 1;
+}
+
+.clause__excerpt {
+  font-size: 13px;
+  margin: 0 0 8px 0;
+  white-space: pre-line;
+}
+
+.clause__reason {
+  font-size: 12px;
+  margin: 0;
+  opacity: 0.8;
+}
+
+.clause__plain {
+  font-size: 12px;
+  margin-top: 6px;
+  background: rgba(103, 80, 164, 0.08);
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.footer {
+  font-size: 11px;
+  opacity: 0.65;
+  text-align: center;
+}
