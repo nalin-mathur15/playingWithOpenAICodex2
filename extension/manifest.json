@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Policy Guardian",
+  "description": "Detects online policies and uses Chrome's built-in AI to flag risky clauses and summarize privacy terms.",
+  "version": "0.1.0",
+  "action": {
+    "default_title": "Policy Guardian",
+    "default_popup": "popup/popup.html"
+  },
+  "background": {
+    "service_worker": "service_worker.js"
+  },
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting",
+    "aiLanguageModel",
+    "aiSummarizer",
+    "aiRewriter",
+    "notifications"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content-script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_ui": {
+    "page": "popup/popup.html",
+    "open_in_tab": true
+  }
+}
