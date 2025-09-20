@@ -161,6 +161,7 @@ function extractJson(text) {
 }
 
 async function runSummarizer(text, maxWords = 300) {
+async function runSummarizer(text) {
   if (!aiRoot || !aiRoot.summarizer || typeof aiRoot.summarizer.create !== 'function') {
     return null;
   }
@@ -202,6 +203,15 @@ async function runSummarizer(text, maxWords = 300) {
     }
 
     return summary;
+    const summarizer = await aiRoot.summarizer.create({ type: 'key-points' });
+    const result = await summarizer.summarize(text);
+    if (!result) return null;
+    if (typeof result === 'string') return result;
+    if (result.summary) return result.summary;
+    if (Array.isArray(result.points)) {
+      return result.points.join('\n');
+    }
+    return null;
   } catch (error) {
     console.warn('Policy Guardian: summarizer failed', error);
     return null;
@@ -302,6 +312,8 @@ function fallbackSummary(text) {
     .slice(0, 3);
   const combined = sentences.join(' ');
   return trimToWordLimit(combined, 300);
+  return sentences.join(' ');
+
 }
 
 async function fallbackAnalysis(pageText) {
@@ -353,6 +365,7 @@ async function ensureSummaryWithinLimit(summary, sourceText, maxWords = 300) {
 
   return trimToWordLimit(current, maxWords);
 }
+
 
 async function analyzeWithPromptAPI(pageText, pageType) {
   const systemPrompt = `You are an expert legal analyst that evaluates website ${pageType} for risky clauses. Respond using strict JSON.`;
@@ -436,6 +449,9 @@ async function runPolicyAnalysis({ pageText, pageType }) {
 
   if (!analysis.summary) {
     const summary = await runSummarizer(truncated, 300);
+
+    const summary = await runSummarizer(truncated);
+
     if (summary) {
       analysis.summary = summary;
     } else if (!analysis.summary) {

@@ -71,6 +71,7 @@
     return false;
   }
 
+
   function gatherStructuredText() {
     const selectors = 'h1, h2, h3, h4, h5, p, li, dt, dd, blockquote';
     const nodes = Array.from(document.querySelectorAll(selectors));
@@ -99,6 +100,7 @@
   }
 
   function computeDetection() {
+
     const protocol = normalize(window.location.protocol);
     if (!protocol.startsWith('http')) {
       return null;
@@ -107,6 +109,7 @@
     if (isLikelySearchResultsPage()) {
       return null;
     }
+
 
     const url = normalize(window.location.href);
     const title = normalize(document.title);
@@ -176,6 +179,7 @@
         return null;
       }
     }
+
 
     const pageType = bestType === 'terms' ? 'terms-of-service' : 'privacy-policy';
     const { text } = structured;
