@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Policy Guardian</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main id="app">
+      <header class="header">
+        <div class="header__title">Policy Guardian</div>
+        <div class="header__subtitle">Chrome built-in AI risk scan</div>
+      </header>
+
+      <section id="status" class="card">
+        <div class="status__details">
+          <div id="statusLabel" class="status__label">Checking this page…</div>
+          <div id="statusMeta" class="status__meta"></div>
+        </div>
+        <div class="status__actions">
+          <button id="scanButton" class="button button--primary">Scan page</button>
+          <button id="rescanButton" class="button button--ghost">Rescan</button>
+        </div>
+      </section>
+
+      <section id="analysis" class="card" hidden>
+        <h2>Summary</h2>
+        <p id="summary" class="summary"></p>
+        <div class="card__controls">
+          <button id="copySummary" class="button button--ghost">Copy summary</button>
+        </div>
+
+        <div class="heatmap">
+          <div class="heatmap__header">
+            <h3>Risk heatmap</h3>
+            <span class="heatmap__legend">1 (low) → 5 (critical)</span>
+          </div>
+          <div id="heatmapContainer" class="heatmap__grid"></div>
+        </div>
+
+        <div class="clauses">
+          <div class="clauses__header">
+            <h3>Suspicious clauses</h3>
+            <span id="clauseCount" class="clauses__count"></span>
+          </div>
+          <ul id="clausesList" class="clauses__list"></ul>
+        </div>
+      </section>
+
+      <section id="errors" class="card card--error" hidden>
+        <h2>Something went wrong</h2>
+        <p id="errorMessage"></p>
+      </section>
+
+      <footer class="footer">
+        <p>
+          Built for the Chrome Built-in AI Challenge 2025. Your analysis runs on-device
+          using APIs like the Prompt and Summarizer APIs when available. Results are
+          heuristic approximations and not legal advice.
+        </p>
+      </footer>
+    </main>
+    <template id="clause-template">
+      <li class="clause">
+        <div class="clause__score" data-score="">
+          <span class="clause__score-value"></span>
+          <span class="clause__score-label"></span>
+        </div>
+        <div class="clause__body">
+          <p class="clause__excerpt"></p>
+          <p class="clause__reason"></p>
+          <p class="clause__plain" hidden></p>
+        </div>
+      </li>
+    </template>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
