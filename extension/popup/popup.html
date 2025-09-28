@@ -9,8 +9,15 @@
   <body>
     <main id="app">
       <header class="header">
-        <div class="header__title">Policy Guardian</div>
-        <div class="header__subtitle">Chrome built-in AI risk scan</div>
+        <div class="header__text">
+          <div class="header__title">Policy Guardian</div>
+          <div class="header__subtitle">Chrome built-in AI risk scan</div>
+        </div>
+        <div class="header__actions">
+          <button id="settingsToggle" class="button button--icon" aria-expanded="false" aria-controls="settingsCard" title="Open settings">
+            ⚙️
+          </button>
+        </div>
       </header>
 
       <section id="status" class="card">
@@ -45,6 +52,19 @@
             <span id="clauseCount" class="clauses__count"></span>
           </div>
           <ul id="clausesList" class="clauses__list"></ul>
+        </div>
+      </section>
+
+      <section id="settingsCard" class="card card--settings" hidden>
+        <h2>Settings</h2>
+        <div class="setting setting--toggle">
+          <label class="toggle">
+            <input id="darkModeToggle" type="checkbox" />
+            <span>Dark mode</span>
+          </label>
+        </div>
+        <div class="setting">
+          <button id="openReport" class="button button--ghost">Open detailed report in new tab</button>
         </div>
       </section>
 

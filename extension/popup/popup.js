@@ -11,9 +11,43 @@ const errorSection = document.getElementById('errors');
 const errorMessage = document.getElementById('errorMessage');
 const copySummaryButton = document.getElementById('copySummary');
 const clauseTemplate = document.getElementById('clause-template');
+const settingsToggle = document.getElementById('settingsToggle');
+const settingsCard = document.getElementById('settingsCard');
+const darkModeToggle = document.getElementById('darkModeToggle');
+const openReportButton = document.getElementById('openReport');
 
 let currentTabId = null;
 let currentState = null;
+let currentSettings = { darkMode: false };
+
+async function loadSettings() {
+  try {
+    const stored = await chrome.storage.local.get('policyGuardianSettings');
+    const settings = stored.policyGuardianSettings || {};
+    return { darkMode: Boolean(settings.darkMode) };
+  } catch (error) {
+    console.debug('Policy Guardian: unable to load settings', error);
+    return { darkMode: false };
+  }
+}
+
+async function persistSettings(settings) {
+  try {
+    await chrome.storage.local.set({ policyGuardianSettings: settings });
+  } catch (error) {
+    console.debug('Policy Guardian: unable to save settings', error);
+  }
+}
+
+function applyTheme(settings) {
+  document.body.classList.toggle('dark', Boolean(settings.darkMode));
+}
+
+async function updateSettings(partial) {
+  currentSettings = { ...currentSettings, ...partial };
+  applyTheme(currentSettings);
+  await persistSettings(currentSettings);
+}
 
 function formatConfidence(confidence) {
   if (typeof confidence !== 'number') return 'Unknown confidence';
@@ -208,6 +242,11 @@ function applyState(state) {
 }
 
 async function initialize() {
+  currentSettings = await loadSettings();
+  applyTheme(currentSettings);
+  if (darkModeToggle) {
+    darkModeToggle.checked = Boolean(currentSettings.darkMode);
+  }
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab) return;
   currentTabId = tab.id;
@@ -244,6 +283,33 @@ copySummaryButton.addEventListener('click', async () => {
     }, 1600);
   }
 });
+
+if (settingsToggle) {
+  settingsToggle.addEventListener('click', () => {
+    if (!settingsCard) return;
+    const isHidden = settingsCard.hidden;
+    settingsCard.hidden = !isHidden;
+    settingsToggle.setAttribute('aria-expanded', String(isHidden));
+  });
+}
+
+if (darkModeToggle) {
+  darkModeToggle.addEventListener('change', () => {
+    updateSettings({ darkMode: darkModeToggle.checked });
+  });
+}
+
+if (openReportButton) {
+  openReportButton.addEventListener('click', async () => {
+    if (currentTabId == null) return;
+    const url = chrome.runtime.getURL(`report/report.html?tab=${currentTabId}`);
+    try {
+      await chrome.tabs.create({ url });
+    } catch (error) {
+      console.debug('Policy Guardian: unable to open report tab', error);
+    }
+  });
+}
 
 chrome.runtime.onMessage.addListener((message) => {
   if (!message || !message.payload) return;

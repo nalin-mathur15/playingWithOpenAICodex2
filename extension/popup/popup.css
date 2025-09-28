@@ -65,11 +65,21 @@ body.dark::before {
   background: linear-gradient(135deg, rgba(115, 92, 255, 0.18), rgba(255, 77, 136, 0.1));
   box-shadow: 0 16px 40px rgba(114, 80, 200, 0.18);
   backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 body.dark .header {
   background: linear-gradient(135deg, rgba(115, 92, 255, 0.24), rgba(255, 77, 136, 0.18));
   box-shadow: 0 16px 48px rgba(4, 0, 37, 0.6);
+}
+
+.header__text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .header__title {
@@ -85,12 +95,17 @@ body.dark .header {
 
 .header__subtitle {
   font-size: 13px;
-  margin-top: 6px;
   color: var(--text-muted);
 }
 
 body.dark .header__subtitle {
   color: rgba(240, 232, 255, 0.78);
+}
+
+.header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .card {
@@ -197,6 +212,29 @@ body.dark .status__meta {
   background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
   color: var(--text-inverse);
   box-shadow: 0 12px 28px rgba(255, 77, 136, 0.32);
+}
+
+.button--icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: 0 12px 24px rgba(84, 52, 140, 0.18);
+  font-size: 16px;
+}
+
+body.dark .button--icon {
+  background: rgba(55, 36, 102, 0.68);
+  color: #f0eaff;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.45);
+}
+
+.button--icon:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
 }
 
 .button--primary:not(:disabled):hover {
@@ -529,4 +567,59 @@ body.dark .clause__reason {
 
 body.dark .footer {
   color: rgba(236, 227, 255, 0.6);
+}
+.card--settings {
+  padding-top: 16px;
+}
+
+.setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.setting:last-child {
+  margin-bottom: 0;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.toggle input[type='checkbox'] {
+  width: 36px;
+  height: 20px;
+  appearance: none;
+  border-radius: 12px;
+  background: rgba(115, 92, 255, 0.35);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.toggle input[type='checkbox']::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease;
+}
+
+.toggle input[type='checkbox']:checked {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-tertiary));
+}
+
+.toggle input[type='checkbox']:checked::after {
+  transform: translateX(16px);
 }
