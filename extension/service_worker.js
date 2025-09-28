@@ -69,13 +69,15 @@ async function clearState(tabId) {
   }
   try {
     await chrome.action.setBadgeText({ tabId, text: '' });
-  } catch (error) {}
+  } catch (error) {
+  }
 }
 
 async function broadcast(message) {
   try {
     await chrome.runtime.sendMessage(message);
-  } catch (error) {}
+  } catch (error) {
+  }
 }
 
 async function ensureBadge(tabId, detection) {
@@ -290,64 +292,115 @@ function computeFallbackHeatmap(text) {
   });
 }
 
-function fallbackSummary(text) {
-  const sentences = text
-    .replace(/\s+/g, ' ')
-    .split(/(?<=[.!?])\s+/)
-    .filter(Boolean)
-    .slice(0, 3);
-  const combined = sentences.join(' ');
-  return trimToWordLimit(combined, 300);
+function describeRiskLevel(score) {
+  if (score >= 4.5) return 'critical';
+  if (score >= 4) return 'high';
+  if (score >= 3) return 'elevated';
+  if (score >= 2) return 'moderate';
+  return 'low';
+}
+
+function buildAnalysisDigest(analysis, pageType) {
+  const typeLabel = pageType === 'privacy-policy' ? 'privacy policy' : 'terms of service';
+  const heatmap = Array.isArray(analysis.riskHeatmap) ? analysis.riskHeatmap : [];
+  const clauses = Array.isArray(analysis.suspiciousClauses) ? analysis.suspiciousClauses : [];
+
+  const normalizedHeatmap = heatmap
+    .map((entry) => ({
+      category: entry.category || 'Unnamed category',
+      riskLevel: Math.max(0, Math.min(5, Number(entry.riskLevel) || 0)),
+      evidence: Array.isArray(entry.evidence)
+        ? entry.evidence.filter(Boolean).join(', ')
+        : (entry.evidence || '')
+    }))
+    .sort((a, b) => b.riskLevel - a.riskLevel);
+
+  const averageRisk = normalizedHeatmap.length
+    ? normalizedHeatmap.reduce((sum, item) => sum + item.riskLevel, 0) / normalizedHeatmap.length
+    : 0;
+  const overallDescriptor = describeRiskLevel(averageRisk);
+
+  const highRiskCategories = normalizedHeatmap.filter((entry) => entry.riskLevel >= 4);
+  const mediumRiskCategories = normalizedHeatmap.filter(
+    (entry) => entry.riskLevel >= 3 && entry.riskLevel < 4
+  );
+
+  const heatmapHighlights = [];
+  heatmapHighlights.push(
+    `Overall risk trend: ${overallDescriptor} (average ${(averageRisk || 0).toFixed(1)} out of 5 across ${normalizedHeatmap.length} categories).`
+  );
+  if (highRiskCategories.length > 0) {
+    const list = highRiskCategories
+      .map((entry) => `${entry.category} (${entry.riskLevel.toFixed(1)}/5${entry.evidence ? `; evidence: ${entry.evidence}` : ''})`)
+      .join('; ');
+    heatmapHighlights.push(`Highest risk categories: ${list}.`);
+  }
+  if (mediumRiskCategories.length > 0) {
+    const list = mediumRiskCategories
+      .map((entry) => `${entry.category} (${entry.riskLevel.toFixed(1)}/5${entry.evidence ? `; evidence: ${entry.evidence}` : ''})`)
+      .join('; ');
+    heatmapHighlights.push(`Elevated attention suggested for: ${list}.`);
+  }
+  if (heatmapHighlights.length === 1) {
+    heatmapHighlights.push('No categories exceeded the medium-risk threshold.');
+  }
+
+  const clauseSummaries = [];
+  const topClauses = clauses.slice(0, 5);
+  if (topClauses.length === 0) {
+    clauseSummaries.push('No suspicious clauses were detected in this scan.');
+  } else {
+    topClauses.forEach((clause, index) => {
+      const rank = index + 1;
+      const risk = Math.max(1, Math.min(5, Number(clause.riskScore) || 1));
+      const label = describeRiskLevel(risk);
+      const reason = clause.reason ? clause.reason.trim() : '';
+      const plain = clause.plainLanguage ? clause.plainLanguage.trim() : '';
+      const excerpt = clause.excerpt ? clause.excerpt.trim().replace(/\s+/g, ' ') : '';
+      const explanation = plain || reason || excerpt || 'Potential area of concern';
+      clauseSummaries.push(`Clause ${rank} (${label} risk ${risk}/5): ${explanation}`);
+    });
+    if (clauses.length > topClauses.length) {
+      clauseSummaries.push(
+        `${clauses.length - topClauses.length} additional clause${
+          clauses.length - topClauses.length === 1 ? '' : 's'
+        } flagged with lower priority.`
+      );
+    }
+  }
+
+  const digestSections = [
+    `Policy Guardian analysis for this ${typeLabel}.`,
+    ...heatmapHighlights,
+    `Suspicious clause review (${clauses.length} flagged):`,
+    ...clauseSummaries
+  ];
+
+  return trimToWordLimit(digestSections.join('\n'), 600);
+}
+
+async function generateAnalysisSummary(analysis, pageType) {
+  try {
+    const digest = buildAnalysisDigest(analysis, pageType);
+    const aiSummary = await runSummarizer(digest, 300);
+    if (aiSummary) {
+      return aiSummary.trim();
+    }
+    return trimToWordLimit(digest, 300);
+  } catch (error) {
+    console.debug('Policy Guardian: failed to summarize analysis digest', error);
+    const digest = buildAnalysisDigest(analysis, pageType);
+    return trimToWordLimit(digest, 300);
+  }
 }
 
 async function fallbackAnalysis(pageText) {
   const suspiciousClauses = pickSuspiciousClauses(pageText);
   const riskHeatmap = computeFallbackHeatmap(pageText);
-  const summary = fallbackSummary(pageText);
   return {
-    summary,
     suspiciousClauses,
     riskHeatmap
   };
-}
-
-async function ensureSummaryWithinLimit(summary, sourceText, maxWords = 300) {
-  const source = typeof sourceText === 'string' ? sourceText : '';
-  let current = typeof summary === 'string' ? summary.trim() : '';
-
-  if (!current) {
-    const generated = await runSummarizer(source, maxWords);
-    if (generated) {
-      return generated.trim();
-    }
-    return trimToWordLimit(fallbackSummary(source), maxWords);
-  }
-
-  if (wordCount(current) <= maxWords) {
-    return current;
-  }
-
-  const condensed = await runSummarizer(current, maxWords);
-  if (condensed) {
-    const trimmedCondensed = condensed.trim();
-    if (wordCount(trimmedCondensed) <= maxWords) {
-      return trimmedCondensed;
-    }
-    current = trimmedCondensed;
-  }
-
-  if (source) {
-    const sourceCondensed = await runSummarizer(source, maxWords);
-    if (sourceCondensed) {
-      const trimmedSourceCondensed = sourceCondensed.trim();
-      if (wordCount(trimmedSourceCondensed) <= maxWords) {
-        return trimmedSourceCondensed;
-      }
-      current = trimmedSourceCondensed;
-    }
-  }
-
-  return trimToWordLimit(current, maxWords);
 }
 
 async function analyzeWithPromptAPI(pageText, pageType) {
@@ -430,16 +483,9 @@ async function runPolicyAnalysis({ pageText, pageType }) {
     analysis = await fallbackAnalysis(truncated);
   }
 
-  if (!analysis.summary) {
-    const summary = await runSummarizer(truncated, 300);
-    if (summary) {
-      analysis.summary = summary;
-    } else if (!analysis.summary) {
-      analysis.summary = fallbackSummary(truncated);
-    }
+  if (!analysis || typeof analysis !== 'object') {
+    analysis = {};
   }
-
-  analysis.summary = await ensureSummaryWithinLimit(analysis.summary, truncated, 300);
 
   if (!analysis.riskHeatmap || analysis.riskHeatmap.length === 0) {
     analysis.riskHeatmap = computeFallbackHeatmap(truncated);
@@ -462,6 +508,8 @@ async function runPolicyAnalysis({ pageText, pageType }) {
   }
 
   analysis.suspiciousClauses = await enrichClausesWithSummaries(analysis.suspiciousClauses);
+
+  analysis.summary = await generateAnalysisSummary(analysis, pageType);
 
   return analysis;
 }
@@ -552,6 +600,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (typeof tabId !== 'number') {
           sendResponse({ ok: false, error: 'Missing tab id' });
           return;
+        }
+        if (message.origin === 'content-widget' && chrome.action && chrome.action.openPopup) {
+          try {
+            await chrome.action.openPopup();
+          } catch (error) {
+            console.debug('Policy Guardian: unable to open popup automatically', error);
+          }
         }
         startScan(tabId, message.pageType, message.origin || 'manual');
         sendResponse({ ok: true });
